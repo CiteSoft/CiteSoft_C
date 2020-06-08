@@ -54,7 +54,7 @@ citation_entry_t* getItem(string_hash_table_t * hashTable, char* key)
         if(!strcmp(itemPtr->value->uniqueID, key))
         {
             //Strings match
-            itemPtr->value;
+            return itemPtr->value;
         }
         itemPtr = itemPtr->nextEntry;
     }

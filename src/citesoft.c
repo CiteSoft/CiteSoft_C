@@ -23,21 +23,19 @@
 
 string_hash_table_t hashTable;
 
-//void importCite(const char* uniqueID, const char* softwareName, field_t *fields)
-//{
-//    addCitation(uniqueID, softwareName, fields);
-//}
-
-
-
-//fields must be preallocated!!!
+//Fields must be preallocated!!!
+//Add citation entry to the hash table
 void addCitation(const char* uniqueID, const char* softwareName, field_t *fields)
 {
+    //Allocate memory for the citation and populate constant fields
     citation_entry_t *newEntry = malloc(sizeof(citation_entry_t));
     newEntry->uniqueID = allocateAndCopyStr(uniqueID);
     newEntry->softwareName = allocateAndCopyStr(softwareName);
+    newEntry->timestamp = getTimestamp();
     newEntry->fields = fields;
     field_t* fieldPtr = newEntry->fields;
+    newEntry->version = NULL;//Ensure that version pointer is NULL if no version is specified
+    //Check optional field for "version", if present, add a pointer to the first value in the last(to use later for citation comparisons)
     while(fieldPtr)
     {
         if(!strcmp(fieldPtr->fieldName, "version"))
@@ -50,56 +48,67 @@ void addCitation(const char* uniqueID, const char* softwareName, field_t *fields
             fieldPtr = fieldPtr->nextField;
         }
     }
-    newEntry->timestamp = getTimestamp();
-    addItem(&hashTable, newEntry, &compareSameID);
+    addItem(&hashTable, newEntry, &compareSameID);//Add item to hash table
 }
 
+//Add a citation with a linked list of fields containing unmutable field strings
 void addConstCitation(const char* uniqueID, const char* softwareName, const_field_t *fields)
 {
     addCitation(uniqueID, softwareName, createFieldList(fields));
 }
 
+//Add a citation with a linked list of fields containing mutable field strings
 void addVarCitation(const char* uniqueID, const char* softwareName, field_t *fields)
 {
     addCitation(uniqueID, softwareName, copyFieldList(fields));
 }
 
+//Manually add a citation with an arbitrary number of fields to the hash table
 void importCite(const char* uniqueID, const char* softwareName, int argCount, ...)
 {
     if(argCount == 0)
     {
+        //If no optional fields are specified, proceed directly with adding
         addCitation(uniqueID, softwareName, NULL);
     }
     else
     {
+        //Otherwise, load optional fields into a linked list
         const_field_t* fields = malloc(sizeof(const_field_t) * argCount);
-        va_list valist;
-        va_start(valist, argCount); //initialize valist for argcount number of arguments
+        va_list varArgList;
+        va_start(varArgList, argCount); //initialize varArgList for argCount number of arguments
         for (int i = 0; i < argCount; i++)
         {
-            //access all the arguments assigned to valist
-            fields[i] = va_arg(valist, const_field_t);
+            //access all the arguments assigned to varArgList
+            fields[i] = va_arg(varArgList, const_field_t);
         }
         va_end(valist); //clean memory reserved for valist
-        for (int i = 0; i < argCount - 1; i++)//Loop through all but last arg
+        for (int i = 0; i < argCount - 1; i++)//Loop through all but last arg(last arg "next" pointer doesn't need to be updated)
         {
             fields[i].nextField = &fields[i + 1];
         }
-        fields[argCount - 1].nextField = NULL;
+        fields[argCount - 1].nextField = NULL;//Last pointer should be null to terminate the list
         addConstCitation(uniqueID, softwareName, fields);
-        free(fields);
+        free(fields);//Free the array used to store the fields temporarily(addConstCitation will copy them)
     }
 }
 
+//Write the YAML for a single entry to the specified file pointer
+//File pointer must allow writes
 void appendCitationToFile(FILE *fPtr, citation_entry_t *entry)
 {
+    //Print entry header
     fputs("-\r\n", fPtr);
     for(int i = 0; i < sizeof(reqArgs)/sizeof(reqArgs[0]); i++)
     {
         fputs("    ", fPtr);
+        //Print required argument label
         fputs(reqArgs[i], fPtr);
+        //Print YAML syntax for required arguments from standard
         fputs(": >-\r\n", fPtr);
         fputs("        ", fPtr);
+        //Print the correct data field for the label stored in reqArgs[i]
+        //This array can be seen in citesoft.h
         switch(i)
         {
             case 0:
@@ -118,39 +127,79 @@ void appendCitationToFile(FILE *fPtr, citation_entry_t *entry)
         fputs("\r\n", fPtr);
     }
     field_t *fieldPtr = entry->fields;
+    //Loop through all fields
     while(fieldPtr)
     {
+        //Print the name of the field with proper indentation
         fputs("    ", fPtr);
         fputs(fieldPtr->fieldName, fPtr);
         fputs("\r\n", fPtr);
+        //For every item in list of the current optional field at fieldPtr
         for(int i = 0; i < fieldPtr->numOfValues; i++)
         {
+            //Print a new line for each item in the list
+            //Print YAML syntax from standard for item of optional field
             fputs("        - >-\r\n", fPtr);
             fputs("            ", fPtr);
+            //Print value of the line
             fputs(fieldPtr->fieldValue[i], fPtr);
             fputs("\r\n", fPtr);
         }
+        //Advance to next field(or break loop at end of list with NULL pointer)
         fieldPtr = fieldPtr->nextField;
     }
 }
 
-
-void compileCiteSoftwareLog()
+//Append every citation to the log file at the specified path
+void compileCiteSoftwareLog(const char* path)
 {
+    //Get all items in the hash table as a linked list
     item_list_t* list = getAllItems(&hashTable);
+    //Create pointer for iterating through the list
     item_list_t* ptr = list;
+    int concatLen = strlen(OUTPUT_FILE_NAME) + 1;
+    if(path)
+    {
+        //If path is used, make space for path in concat string
+        concatLen += strlen(path);
+    }
+    char* pathWithFilename = malloc(concatLen * sizeof(char));
+    if(path)
+    {
+        //If the user specified a path, concatencate it with OUTPUT_FILE_NAME
+        strcpy(pathWithFilename, OUTPUT_FILE_NAME);
+        strcat(pathWithFilename, path);
+    }
+    else
+    {
+        //Otherwise, saving to current dir, can just pass file name
+        strcpy(pathWithFilename, OUTPUT_FILE_NAME);
+    }
 
-    FILE *file = fopen(OUTPUT_FILE_NAME, "a");
+    //Open the output file to append
+    FILE *file = fopen(pathWithFilename, "a");
+    //Append a YAML file header
     fputs("---\r\n", file);
+    //For every citation in the list
     while(ptr)
     {
+        //Append the citation to the file
         appendCitationToFile(file, ptr->value);
+        //Advance to next item in the list or, if ptr is the last item in the list, break the loop(nextItem == NULL)
         ptr = ptr->nextItem;
     }
+    //Free the memory used by the list returned by the hash table
     destroyList(list);
 }
 
-void compileCiteSoftwareLogAndDestroy()
+//Append every citation to a log file in the current directory
+void compileCiteSoftwareLogLocal()
+{
+    compileCiteSoftwareLog(NULL);
+}
+
+//Export the CiteSoft log containing all entries currently in the hash table and free all associated memory
+void compileCiteSoftwareLogAndFree()
 {
     compileCiteSoftwareLog();
     clean();
@@ -161,6 +210,8 @@ void consolidateSoftwareLog()
     //TODO
 }
 
+//Returns a pointer to a string containing the current time in ISO 8601 format
+//The caller is responsible for freeing this memory
 char* getTimestamp()
 {
     char result[100];
@@ -169,27 +220,30 @@ char* getTimestamp()
     size_t actualSize = strftime(result, sizeof(result), "%Y-%m-%dT%H:%M:%S", timeInfo);
     char* returnVal = malloc(actualSize);
     strcpy(returnVal, result);
+    return returnVal;
 }
 
-void clean()
+//Free all memory used by the hash table, including all memory allocated for items(citations)
+void freeTable()
 {
     destroyTable(&hashTable, &destroyCitation);
 }
 
+//Compares two citation entries with the same uniqueID
+//Returns a pointer to the newer citation(citation to keep) and destroys(frees) the older citation
 citation_entry_t* compareSameID(citation_entry_t *oldEntry, citation_entry_t *newEntry)
 {
     if(oldEntry->version && newEntry->version)
     {
       semver_t old_version = {};
       semver_t new_version = {};
-
       if (semver_parse(oldEntry->version, &old_version) || semver_parse(newEntry->version, &new_version))
       {
           //Error while parsing semantic version
           regex_t regex;
-          regcomp(&regex, "[0-9]*\.[0-9]*", 0);
-          if(!regexec(&regex, oldEntry->version, 0, NULL, 0) ||
-             !regexec(&regex, newEntry->version, 0, NULL, 0))
+          regcomp(&regex, "[0-9]*\\.[0-9]*", 0);
+          if(regexec(&regex, oldEntry->version, 0, NULL, 0) ||
+             regexec(&regex, newEntry->version, 0, NULL, 0))
           {//At least one version string did not match the regex, alphanumric comp
               if(strcmp(oldEntry->version, newEntry->version) >= 0)
               {
@@ -242,12 +296,12 @@ citation_entry_t* compareSameID(citation_entry_t *oldEntry, citation_entry_t *ne
       semver_free(&old_version);
       semver_free(&new_version);
     }
-    else if(oldEntry->version)//Old entry has a version and new entry doesn't
+    else if(oldEntry->version)//Old entry has a version and new entry doesn't - retain old entry
     {
         destroyCitation(newEntry);
         return oldEntry;
     }
-    else if(newEntry->version)//New entry has a version and old entry doesn't
+    else if(newEntry->version)//New entry has a version and old entry doesn't - retain new entry
     {
         destroyCitation(oldEntry);
         return newEntry;
@@ -257,11 +311,9 @@ citation_entry_t* compareSameID(citation_entry_t *oldEntry, citation_entry_t *ne
         destroyCitation(newEntry);
         return oldEntry;
     }
-
-
-    return NULL;
 }
 
+//Run test case with optional fields
 void testOpFields()
 {
     printf("Testing optional fields...\r\n");
