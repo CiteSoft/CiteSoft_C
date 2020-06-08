@@ -82,7 +82,7 @@ void importCite(const char* uniqueID, const char* softwareName, int argCount, ..
             //access all the arguments assigned to varArgList
             fields[i] = va_arg(varArgList, const_field_t);
         }
-        va_end(valist); //clean memory reserved for valist
+        va_end(varArgList); //clean memory reserved for varArgList
         for (int i = 0; i < argCount - 1; i++)//Loop through all but last arg(last arg "next" pointer doesn't need to be updated)
         {
             fields[i].nextField = &fields[i + 1];
@@ -193,17 +193,25 @@ void compileCiteSoftwareLog(const char* path)
 }
 
 //Append every citation to a log file in the current directory
-void compileCiteSoftwareLogLocal()
+void compileLocalCiteSoftwareLog()
 {
     compileCiteSoftwareLog(NULL);
 }
 
-//Export the CiteSoft log containing all entries currently in the hash table and free all associated memory
-void compileCiteSoftwareLogAndFree()
+//Export a CiteSoft log containing all entries currently in the hash table to specified path and free all associated memory
+void compileCiteSoftwareLogAndFree(const char* path)
 {
-    compileCiteSoftwareLog();
-    clean();
+    compileCiteSoftwareLog(path);
+    freeTable();
 }
+
+//Export a local CiteSoft log containing all entries currently in the hash table and free all associated memory
+void compileLocalCiteSoftwareLogAndFree()
+{
+    compileCiteSoftwareLog(NULL);
+    freeTable();
+}
+
 
 void consolidateSoftwareLog()
 {
@@ -340,6 +348,6 @@ int main(int argc, char* argv[])
     importCite("ID2", "CiteSoft", 0);
     testOpFields();
     printf("Exporting log...\r\n");
-    compileCiteSoftwareLogAndDestroy();
+    compileLocalCiteSoftwareLogAndFree();
     return 0;
 }

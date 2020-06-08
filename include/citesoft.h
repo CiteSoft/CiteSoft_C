@@ -11,6 +11,6 @@ const char* reqArgs[3] = {"timestamp", "unique_id", "software_name"};
 void importCite(const char* uniqueID, const char* softwareName, int argCount, ...);
 char* getTimestamp();
 citation_entry_t* compareSameID(citation_entry_t *oldEntry, citation_entry_t *newEntry);
-void clean();
+void freeTable();
 
 #endif
