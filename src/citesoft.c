@@ -1,5 +1,5 @@
 // ------------------------------------------------------------------------------------------------------------
-// Cite Soft
+// CiteSoft
 //
 // C
 //
@@ -74,22 +74,22 @@ void importCite(const char* uniqueID, const char* softwareName, int argCount, ..
     else
     {
         //Otherwise, load optional fields into a linked list
-        const_field_t* fields = malloc(sizeof(const_field_t) * argCount);
+        const_field_t* citationFields = malloc(sizeof(const_field_t) * argCount);
         va_list varArgList;
         va_start(varArgList, argCount); //initialize varArgList for argCount number of arguments
         for (int i = 0; i < argCount; i++)
         {
             //access all the arguments assigned to varArgList
-            fields[i] = va_arg(varArgList, const_field_t);
+            citationFields[i] = va_arg(varArgList, const_field_t);
         }
         va_end(varArgList); //clean memory reserved for varArgList
         for (int i = 0; i < argCount - 1; i++)//Loop through all but last arg(last arg "next" pointer doesn't need to be updated)
         {
-            fields[i].nextField = &fields[i + 1];
+            citationFields[i].nextField = &citationFields[i + 1];
         }
-        fields[argCount - 1].nextField = NULL;//Last pointer should be null to terminate the list
-        addConstCitation(uniqueID, softwareName, fields);
-        free(fields);//Free the array used to store the fields temporarily(addConstCitation will copy them)
+        citationFields[argCount - 1].nextField = NULL;//Last pointer should be null to terminate the list
+        addConstCitation(uniqueID, softwareName, citationFields);
+        free(citationFields);//Free the array used to store the fields temporarily(addConstCitation will copy them)
     }
 }
 
@@ -154,9 +154,9 @@ void appendCitationToFile(FILE *fPtr, citation_entry_t *entry)
 void compileCiteSoftwareLog(const char* path)
 {
     //Get all items in the hash table as a linked list
-    item_list_t* list = getAllItems(&hashTable);
+    item_list_t* citationList = getAllItems(&hashTable);
     //Create pointer for iterating through the list
-    item_list_t* itemPtr = list;
+    item_list_t* itemPtr = citationList;
     int concatLen = strlen(OUTPUT_FILE_NAME) + 1;
     if(path)
     {
@@ -193,7 +193,7 @@ void compileCiteSoftwareLog(const char* path)
     //Free the file pointer
     fclose(file);
     //Free the memory used by the list returned by the hash table
-    destroyList(list);
+    destroyList(citationList);
 }
 
 //Append every citation to a log file in the current directory
@@ -256,10 +256,10 @@ citation_entry_t* compareSameID(citation_entry_t *oldEntry, citation_entry_t *ne
       if (parseOldFailure && parseNewFailure)
       {
           //Error while parsing semantic version of both entries
-          regex_t regex;
-          regcomp(&regex, "[0-9]*\\.[0-9]*", 0);
-          if(regexec(&regex, oldEntry->version, 0, NULL, 0) ||
-             regexec(&regex, newEntry->version, 0, NULL, 0))
+          regex_t decimalRegex;
+          regcomp(&decimalRegex, "[0-9]*\\.[0-9]*", 0);
+          if(regexec(&decimalRegex, oldEntry->version, 0, NULL, 0) ||
+             regexec(&decimalRegex, newEntry->version, 0, NULL, 0))
           {//At least one version string did not match the regex, alphanumric comp
               if(strcmp(oldEntry->version, newEntry->version) >= 0)
               {
