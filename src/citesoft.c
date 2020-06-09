@@ -156,7 +156,7 @@ void compileCiteSoftwareLog(const char* path)
     //Get all items in the hash table as a linked list
     item_list_t* list = getAllItems(&hashTable);
     //Create pointer for iterating through the list
-    item_list_t* ptr = list;
+    item_list_t* itemPtr = list;
     int concatLen = strlen(OUTPUT_FILE_NAME) + 1;
     if(path)
     {
@@ -178,16 +178,17 @@ void compileCiteSoftwareLog(const char* path)
 
     //Open the output file to append
     FILE *file = fopen(pathWithFilename, "a");
+    //Free path string, not needed any more
     free(pathWithFilename);
     //Append a YAML file header
     fputs("---\r\n", file);
     //For every citation in the list
-    while(ptr)
+    while(itemPtr)
     {
         //Append the citation to the file
-        appendCitationToFile(file, ptr->value);
+        appendCitationToFile(file, itemPtr->value);
         //Advance to next item in the list or, if ptr is the last item in the list, break the loop(nextItem == NULL)
-        ptr = ptr->nextItem;
+        itemPtr = itemPtr->nextItem;
     }
     //Free the file pointer
     fclose(file);
@@ -250,9 +251,11 @@ citation_entry_t* compareSameID(citation_entry_t *oldEntry, citation_entry_t *ne
     {
       semver_t old_version = {};
       semver_t new_version = {};
-      if (semver_parse(oldEntry->version, &old_version) || semver_parse(newEntry->version, &new_version))
+      int parseOldFailure = semver_parse(oldEntry->version, &old_version);
+      int parseNewFailure = semver_parse(newEntry->version, &new_version);
+      if (parseOldFailure && parseNewFailure)
       {
-          //Error while parsing semantic version
+          //Error while parsing semantic version of both entries
           regex_t regex;
           regcomp(&regex, "[0-9]*\\.[0-9]*", 0);
           if(regexec(&regex, oldEntry->version, 0, NULL, 0) ||
@@ -284,6 +287,18 @@ citation_entry_t* compareSameID(citation_entry_t *oldEntry, citation_entry_t *ne
                   return newEntry;
               }
           }
+      }
+      else if(parseOldFailure)
+      {
+          //Failure parsing old version, success parsing new version - return new version
+          destroyCitation(oldEntry);
+          return newEntry;
+      }
+      else if(parseNewFailure)
+      {
+        //Failure parsing new version, success parsing old version - return old version
+          destroyCitation(newEntry);
+          return oldEntry;
       }
       int result = semver_compare(old_version, new_version);
       if (result == 0)
@@ -345,6 +360,33 @@ void testOpFields()
     importCite("Optional fields", "CiteSoft", 2, f1, f2);
 }
 
+void testVersion()
+{
+    printf("Testing version comparison...\r\n");
+  //Version 1
+    const_field_t ver1;
+    ver1.fieldName = "version";
+    const char* values[] = {"3.2.5"};
+    ver1.fieldValue = values;
+    ver1.numOfValues = sizeof(values)/sizeof(char*);
+    importCite("Version test", "CiteSoft", 1, ver1);
+    //Version 2
+    const_field_t ver2;
+    ver2.fieldName = "version";
+    const char* values2[] = {"8.52"};
+    ver2.fieldValue = values2;
+    ver2.numOfValues = sizeof(values2)/sizeof(char*);
+    importCite("Version test", "CiteSoft", 1, ver2);
+    //Version 3
+    const_field_t ver3;
+    ver3.fieldName = "version";
+    const char* values3[] = {"1.20"};
+    ver3.fieldValue = values3;
+    ver3.numOfValues = sizeof(values3)/sizeof(char*);
+    importCite("Version test", "CiteSoft", 1, ver3);
+}
+
+
 int main(int argc, char* argv[])
 {
     printf("Adding ID1 to log\r\n");
@@ -352,6 +394,7 @@ int main(int argc, char* argv[])
     printf("Adding ID2 to log\r\n");
     importCite("ID2", "CiteSoft", 0);
     testOpFields();
+    testVersion();
     printf("Exporting log...\r\n");
     compileLocalCiteSoftwareLogAndFree();
     return 0;

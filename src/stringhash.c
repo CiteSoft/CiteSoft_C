@@ -29,7 +29,8 @@ void addItem(string_hash_table_t* hashTable, citation_entry_t *item, citation_en
     else
     {
         hash_table_item_t *itemPtr = hashTable->dataArray[hash];
-        while(itemPtr->nextEntry)
+        hash_table_item_t *lastItemPtr = NULL;
+        while(itemPtr)
         {
             if(!strcmp(itemPtr->value->uniqueID, item->uniqueID))
             {
@@ -37,9 +38,10 @@ void addItem(string_hash_table_t* hashTable, citation_entry_t *item, citation_en
                 free(newItem);//New item wasn't needed, free it
                 return;//New value is now in table, return
             }
+            lastItemPtr = itemPtr;
             itemPtr = itemPtr->nextEntry;
         }
-        itemPtr->nextEntry = newItem;
+        lastItemPtr->nextEntry = newItem;
     }
 }
 
