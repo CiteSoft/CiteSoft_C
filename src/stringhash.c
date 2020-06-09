@@ -168,7 +168,20 @@ void destroyTable(string_hash_table_t* hashTable, void (*destroyItem)(citation_e
     }
 }
 
+//djb2 string hashing function
+unsigned long hash(unsigned char *str)
+{
+    unsigned long hash = 5381;
+    int c;
+    while ( (c = *str++) )
+    {
+        hash = ((hash << 5) + hash) ^ c; /* hash * 33 ^ c */
+    }
+    return hash;
+}
+
+//Compute hash of key, then ensure that result is smaller than the size of the hash table
 int hashFunction(char *key)
 {
-    return 1;
+    return hash((unsigned char*) key) % HASH_TABLE_SIZE;
 }

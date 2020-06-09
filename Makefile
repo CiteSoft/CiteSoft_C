@@ -11,7 +11,7 @@ SRC_OBJF := $(patsubst $(SRCD)/%,$(BLDD)/%,$(SRCF:.c=.o))
 
 INC := -I $(INCD)
 
-CFLAGS= -Wall #-L lib -l libsemver.so#-lyaml
+CFLAGS= -Wall -g #-L lib -l libsemver.so#-lyaml
 
 #LIBS := -L $(LIBD) -l libsemver.so
 

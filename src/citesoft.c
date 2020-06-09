@@ -23,7 +23,7 @@
 
 string_hash_table_t hashTable;
 
-//Fields must be preallocated!!!
+//Field list(fields) must be preallocated - this function will only copy pointers to the field list
 //Add citation entry to the hash table
 void addCitation(const char* uniqueID, const char* softwareName, field_t *fields)
 {
@@ -178,6 +178,7 @@ void compileCiteSoftwareLog(const char* path)
 
     //Open the output file to append
     FILE *file = fopen(pathWithFilename, "a");
+    free(pathWithFilename);
     //Append a YAML file header
     fputs("---\r\n", file);
     //For every citation in the list
@@ -188,6 +189,8 @@ void compileCiteSoftwareLog(const char* path)
         //Advance to next item in the list or, if ptr is the last item in the list, break the loop(nextItem == NULL)
         ptr = ptr->nextItem;
     }
+    //Free the file pointer
+    fclose(file);
     //Free the memory used by the list returned by the hash table
     destroyList(list);
 }
@@ -225,8 +228,10 @@ char* getTimestamp()
     char result[100];
     time_t t = time(NULL);
     struct tm *timeInfo = localtime(&t);
-    size_t actualSize = strftime(result, sizeof(result), "%Y-%m-%dT%H:%M:%S", timeInfo);
-    char* returnVal = malloc(actualSize);
+    size_t actualSize = strftime(result, sizeof(result), "%Y-%m-%dT%H:%M:%S", timeInfo) + 1;
+    char* returnVal = malloc(sizeof(char) * actualSize);
+
+
     strcpy(returnVal, result);
     return returnVal;
 }

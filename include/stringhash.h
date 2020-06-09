@@ -2,7 +2,7 @@
 #define STRINGHASH_H
 #include "datastruct.h"
 
-#define HASH_TABLE_SIZE 100
+#define HASH_TABLE_SIZE 1024
 
 typedef struct item_list_t
 {
