@@ -2,4 +2,6 @@ USAGE:
 
 -Run '$ make' to compile code
 
--Run '$./citesoft' to execute test cases
+-Run '$ make clean' to remove all executable/obj files
+
+-Run '$./bin/citesoft' to execute test cases

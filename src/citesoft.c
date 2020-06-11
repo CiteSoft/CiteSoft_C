@@ -255,37 +255,16 @@ citation_entry_t* compareSameID(citation_entry_t *oldEntry, citation_entry_t *ne
       int parseNewFailure = semver_parse(newEntry->version, &new_version);
       if (parseOldFailure && parseNewFailure)
       {
-          //Error while parsing semantic version of both entries
-          regex_t decimalRegex;
-          regcomp(&decimalRegex, "[0-9]*\\.[0-9]*", 0);
-          if(regexec(&decimalRegex, oldEntry->version, 0, NULL, 0) ||
-             regexec(&decimalRegex, newEntry->version, 0, NULL, 0))
-          {//At least one version string did not match the regex, alphanumric comp
-              if(strcmp(oldEntry->version, newEntry->version) >= 0)
-              {
-                  destroyCitation(newEntry);
-                  return oldEntry;
-              }
-              else
-              {
-                  destroyCitation(oldEntry);
-                  return newEntry;
-              }
+          //Both version strings are not a semantic version, alphanumric comp
+          if(strcmp(oldEntry->version, newEntry->version) >= 0)
+          {
+              destroyCitation(newEntry);
+              return oldEntry;
           }
           else
-          {//Parse both version strings as a double
-              double oldVersionNum = atof(oldEntry->version);
-              double newVersionNum = atof(oldEntry->version);
-              if(oldVersionNum >= newVersionNum)
-              {
-                  destroyCitation(newEntry);
-                  return oldEntry;
-              }
-              else
-              {
-                  destroyCitation(oldEntry);
-                  return newEntry;
-              }
+          {
+              destroyCitation(oldEntry);
+              return newEntry;
           }
       }
       else if(parseOldFailure)
@@ -366,14 +345,14 @@ void testVersion()
   //Version 1
     const_field_t ver1;
     ver1.fieldName = "version";
-    const char* values[] = {"3.2.5"};
+    const char* values[] = {"3.25.91"};
     ver1.fieldValue = values;
     ver1.numOfValues = sizeof(values)/sizeof(char*);
     importCite("Version test", "CiteSoft", 1, ver1);
     //Version 2
     const_field_t ver2;
     ver2.fieldName = "version";
-    const char* values2[] = {"8.52"};
+    const char* values2[] = {"3.26"};
     ver2.fieldValue = values2;
     ver2.numOfValues = sizeof(values2)/sizeof(char*);
     importCite("Version test", "CiteSoft", 1, ver2);
