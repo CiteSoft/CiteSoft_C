@@ -2,7 +2,7 @@
 #define CITESOFT_H
 #include "datastruct.h"
 
-const char* OUTPUT_FILE_NAME = "CiteSoftwareCheckPoints.txt";
+const char* OUTPUT_FILE_NAME = "CiteSoftwareCheckpointsLog.txt";
 const char* CONSOLIDATED_FILE_NAME = "CiteSoftwareConsolidatedLog.txt";
 
 const char* validOptArgs[7] = {"version", "cite", "author", "doi", "url", "encoding", "misc"};
